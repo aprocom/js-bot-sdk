@@ -130,6 +130,7 @@ class Bot {
     return state.self;
   }
 
+  // search by already seen
   /**
    * Returns user by id, if bot already seen this user before.
    */
@@ -146,6 +147,7 @@ class Bot {
     return state.groups.get(gid) || null;
   }
 
+  // subscribe to events
   /**
    * Subscribes to messages stream.
    */
@@ -179,6 +181,8 @@ class Bot {
   /**
    * Sends text message.
    */
+
+  //messaging
   public async sendText(
     peer: Peer,
     text: string,
@@ -263,6 +267,7 @@ class Bot {
     return this.rpc.sendMessage(outPeer, content, attachment);
   }
 
+  // uploading
   /**
    * Retrieves file url by location.
    */
@@ -270,6 +275,7 @@ class Bot {
     return this.rpc.fetchFileUrl(fileLocation);
   }
 
+  // history
   /**
    * Retrieves messages by message ids.
    */
@@ -284,6 +290,18 @@ class Bot {
     return messages.map(HistoryMessage.from);
   }
 
+  public async loadHistory(
+    peer: Peer,
+    date?: Long,
+    direction?: dialog.ListLoadMode,
+    limit?: number,
+  ): Promise<Array<HistoryMessage> | null> {
+    const state = await this.ready;
+    const outPeer = await state.createOutPeer(peer);
+    return await this.rpc.loadHistory(outPeer, date, direction, limit);
+  }
+
+  // search
   /**
    * Finds user by nick.
    */
@@ -305,6 +323,7 @@ class Bot {
     return null;
   }
 
+  // parameters
   public async getParameter(key: string): Promise<string | null> {
     const state = await this.ready;
 
@@ -317,6 +336,17 @@ class Bot {
     await this.rpc.editParameter(key, value);
 
     state.parameters.set(key, value);
+  }
+
+  // groups
+  public async createGroup(title: string, username: string): Promise<void> {
+    await this.rpc.createGroup(title, username);
+  }
+
+  public async findGroupsByShortname(
+    query: string,
+  ): Promise<Array<Peer> | null> {
+    return (await this.rpc.findGroupsByShortname(query)) || null;
   }
 }
 

@@ -15,13 +15,15 @@ import reduce from './utils/reduce';
 import { Entities, PeerEntities, ResponseEntities } from './internal/types';
 import { Observable, from } from 'rxjs';
 import { flatMap, last, map } from 'rxjs/operators';
-import { Content, OutPeer, FileLocation } from './entities';
+import { Content, OutPeer, FileLocation, HistoryMessage } from './entities';
 import MessageAttachment from './entities/messaging/MessageAttachment';
 import { contentToApi, DocumentContent } from './entities/messaging/content';
 import { FileInfo } from './utils/getFileInfo';
 import randomLong from './utils/randomLong';
 import fromReadStream from './utils/fromReadStream';
 import UUID from './entities/UUID';
+import Peer from './entities/Peer';
+import Long = require('long');
 
 const pkg = require('../package.json');
 
@@ -342,6 +344,38 @@ class Rpc extends Services {
     };
   }
 
+  async loadHistory(
+    peer: OutPeer,
+    date?: Long,
+    direction?: dialog.ListLoadMode,
+    limit?: number,
+  ): Promise<Array<HistoryMessage>> {
+    if (!date) {
+      date = Long.fromValue(0);
+    }
+    if (!direction) {
+      direction = dialog.ListLoadMode.LISTLOADMODE_FORWARD;
+    }
+    if (!limit) {
+      limit = 2;
+    }
+    const history = await this.messaging.loadHistory(
+      dialog.RequestLoadHistory.create({
+        peer: peer.toApi(),
+        date: date,
+        loadMode: direction,
+        limit: limit,
+      }),
+    );
+    const len = history.history.length;
+    const result: Array<HistoryMessage> = new Array(len);
+    for (let i = 0; len > i; i++) {
+      result[i] = HistoryMessage.from(history.history[i]);
+    }
+
+    return result;
+  }
+
   async searchContacts(nick: string): Promise<ResponseEntities<Array<number>>> {
     const res = await this.contacts.searchContacts(
       dialog.RequestSearchContacts.create({ request: nick }),
@@ -372,6 +406,41 @@ class Rpc extends Services {
         value: google.protobuf.StringValue.create({ value }),
       }),
     );
+  }
+
+  async createGroup(title: string, username: string): Promise<void> {
+    await this.groups.createGroup(
+      dialog.RequestCreateGroup.create({
+        title: title,
+        username: google.protobuf.StringValue.create({ value: username }),
+      }),
+    );
+  }
+
+  async findGroupsByShortname(query: string): Promise<Array<Peer>> {
+    const find = await this.search.findGroupByShortname(
+      dialog.RequestPeerSearch.create({
+        query: [
+          dialog.SearchCondition.create({
+            searchPeerTypeCondition: dialog.SearchPeerTypeCondition.create({
+              peerType: dialog.SearchPeerType.SEARCHPEERTYPE_GROUPS,
+            }),
+          }),
+          dialog.SearchCondition.create({
+            searchPieceText: dialog.SearchPieceText.create({
+              query: query,
+            }),
+          }),
+        ],
+      }),
+    );
+    const groups = find.groupPeers;
+    const len = groups.length;
+    const groupsPeers: Array<Peer> = new Array(len);
+    for (let i = 0; len > i; i++) {
+      groupsPeers[i] = Peer.group(groups[i].groupId);
+    }
+    return groupsPeers;
   }
 }
 

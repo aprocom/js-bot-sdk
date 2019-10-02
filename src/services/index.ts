@@ -10,6 +10,9 @@ import Registration from './Registration';
 import MediaAndFiles from './MediaAndFiles';
 import Authentication from './Authentication';
 import SequenceAndUpdates from './SequenceAndUpdates';
+import Groups from './Groups';
+import Search from './Search';
+
 class Services {
   public readonly contacts: Contacts;
   public readonly messaging: Messaging;
@@ -18,6 +21,8 @@ class Services {
   public readonly mediaAndFiles: MediaAndFiles;
   public readonly authentication: Authentication;
   public readonly sequenceAndUpdates: SequenceAndUpdates;
+  public readonly groups: Groups;
+  public readonly search: Search;
 
   constructor(config: Config) {
     this.contacts = new Contacts(config);
@@ -27,6 +32,8 @@ class Services {
     this.mediaAndFiles = new MediaAndFiles(config);
     this.authentication = new Authentication(config);
     this.sequenceAndUpdates = new SequenceAndUpdates(config);
+    this.groups = new Groups(config);
+    this.search = new Search(config);
   }
 
   public close() {
@@ -37,6 +44,8 @@ class Services {
     this.mediaAndFiles.close();
     this.authentication.close();
     this.sequenceAndUpdates.close();
+    this.groups.close();
+    this.search.close();
   }
 }
 

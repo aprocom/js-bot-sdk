@@ -54,6 +54,17 @@ class Messaging extends Service<any> {
       this.getCallOptions(),
     );
   }
+
+  loadHistory(
+    request: dialog.RequestLoadHistory,
+    metadata?: Metadata,
+  ): Promise<dialog.ResponseLoadHistory> {
+    return this.service.loadHistoryAsync(
+      request,
+      metadata,
+      this.getCallOptions(),
+    );
+  }
 }
 
 export default Messaging;
