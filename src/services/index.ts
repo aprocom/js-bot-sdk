@@ -12,6 +12,7 @@ import Authentication from './Authentication';
 import SequenceAndUpdates from './SequenceAndUpdates';
 import Groups from './Groups';
 import Search from './Search';
+import Users from './Users';
 
 class Services {
   public readonly contacts: Contacts;
@@ -23,6 +24,7 @@ class Services {
   public readonly sequenceAndUpdates: SequenceAndUpdates;
   public readonly groups: Groups;
   public readonly search: Search;
+  public readonly users: Users;
 
   constructor(config: Config) {
     this.contacts = new Contacts(config);
@@ -34,6 +36,7 @@ class Services {
     this.sequenceAndUpdates = new SequenceAndUpdates(config);
     this.groups = new Groups(config);
     this.search = new Search(config);
+    this.users = new Users(config);
   }
 
   public close() {
@@ -46,6 +49,7 @@ class Services {
     this.sequenceAndUpdates.close();
     this.groups.close();
     this.search.close();
+    this.users.close();
   }
 }
 

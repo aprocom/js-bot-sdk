@@ -24,6 +24,8 @@ import fromReadStream from './utils/fromReadStream';
 import UUID from './entities/UUID';
 import Peer from './entities/Peer';
 import Long = require('long');
+import FullUser from './entities/FullUser';
+import UserOutPeer from './entities/UserOutPeer';
 
 const pkg = require('../package.json');
 
@@ -261,6 +263,18 @@ class Rpc extends Services {
     );
   }
 
+  async messageRead(peer: OutPeer, date?: Long) {
+    if (!date) {
+      date = Long.fromValue(0);
+    }
+    await this.messaging.messageRead(
+      dialog.RequestMessageRead.create({
+        peer: peer.toApi(),
+        date: date,
+      }),
+    );
+  }
+
   async uploadFile(
     fileName: string,
     fileInfo: FileInfo,
@@ -386,6 +400,23 @@ class Rpc extends Services {
       userPeers: res.userPeers,
       groupPeers: [],
     };
+  }
+
+  async userFullProfile(peer: OutPeer): Promise<FullUser | null> {
+    const userOutPeer = UserOutPeer.create(peer.peer, peer.accessHash).toApi();
+    const fullUsersApi = await this.users.loadFullUsers(
+      dialog.RequestLoadFullUsers.create({
+        userPeers: Array(userOutPeer),
+      }),
+    );
+    if (fullUsersApi !== null) {
+      if (fullUsersApi.fullUsers.length > 0) {
+        return fullUsersApi.fullUsers[0]
+          ? FullUser.from(fullUsersApi.fullUsers[0])
+          : null;
+      }
+    }
+    return null;
   }
 
   async getParameters(): Promise<Map<string, string>> {

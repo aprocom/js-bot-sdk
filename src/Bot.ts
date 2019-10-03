@@ -21,6 +21,7 @@ import {
   TextContent,
   DocumentContent,
   MessageAttachment,
+  OutPeer,
 } from './entities';
 import State from './State';
 import { ResponseEntities } from './internal/types';
@@ -29,6 +30,7 @@ import createImagePreview from './utils/createImagePreview';
 import normalizeArray from './utils/normalizeArray';
 import DeletedContent from './entities/messaging/content/DeletedContent';
 import { SSLConfig } from './utils/createCredentials';
+import FullUser from './entities/FullUser';
 
 type Config = {
   token: Token;
@@ -209,6 +211,12 @@ class Bot {
     return this.rpc.editMessage(mid, content);
   }
 
+  public async messageRead(peer: Peer, date?: Long): Promise<void> {
+    const state = await this.ready;
+    const outPeer = state.createOutPeer(peer);
+    return this.rpc.messageRead(outPeer, date);
+  }
+
   /**
    * Edits text message.
    */
@@ -347,6 +355,23 @@ class Bot {
     query: string,
   ): Promise<Array<Peer> | null> {
     return (await this.rpc.findGroupsByShortname(query)) || null;
+  }
+
+  // users
+  public async userFullProfile(peer: Peer): Promise<FullUser | null> {
+    const state = await this.ready;
+    const outPeer = state.createOutPeer(peer);
+    return this.rpc.userFullProfile(outPeer);
+  }
+
+  public async userCustomProfile(peer: Peer): Promise<string> {
+    const fullProfile = await this.userFullProfile(peer);
+    if (fullProfile !== null) {
+      if (fullProfile.customProfile !== null) {
+        return fullProfile.customProfile;
+      }
+    }
+    return '';
   }
 }
 

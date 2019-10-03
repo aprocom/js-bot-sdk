@@ -65,6 +65,17 @@ class Messaging extends Service<any> {
       this.getCallOptions(),
     );
   }
+
+  messageRead(
+    request: dialog.RequestMessageRead,
+    metadata?: Metadata,
+  ): Promise<void> {
+    return this.service.messageReadAsync(
+      request,
+      metadata,
+      this.getCallOptions(),
+    );
+  }
 }
 
 export default Messaging;
