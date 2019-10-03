@@ -39,6 +39,13 @@ type Config = {
   loggerOptions?: LoggerOptions;
 };
 
+export enum ListMode {
+  UNKNOWN = dialog.ListLoadMode.LISTLOADMODE_UNKNOWN,
+  FORWARD = dialog.ListLoadMode.LISTLOADMODE_FORWARD,
+  BACKWARD = dialog.ListLoadMode.LISTLOADMODE_BACKWARD,
+  BOTH = dialog.ListLoadMode.LISTLOADMODE_BOTH,
+}
+
 class Bot {
   private readonly rpc: Rpc;
   private readonly ready: Promise<State>;
