@@ -14,7 +14,7 @@ class Groups extends Service<any> {
   createGroup(
     request: dialog.RequestCreateGroup,
     metadata?: Metadata,
-  ): Promise<dialog.ResponseSearchContacts> {
+  ): Promise<dialog.ResponseCreateGroup> {
     return this.service.createGroupAsync(
       request,
       metadata,

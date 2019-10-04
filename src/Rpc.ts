@@ -15,7 +15,13 @@ import reduce from './utils/reduce';
 import { Entities, PeerEntities, ResponseEntities } from './internal/types';
 import { Observable, from } from 'rxjs';
 import { flatMap, last, map } from 'rxjs/operators';
-import { Content, OutPeer, FileLocation, HistoryMessage } from './entities';
+import {
+  Content,
+  OutPeer,
+  FileLocation,
+  HistoryMessage,
+  Group,
+} from './entities';
 import MessageAttachment from './entities/messaging/MessageAttachment';
 import { contentToApi, DocumentContent } from './entities/messaging/content';
 import { FileInfo } from './utils/getFileInfo';
@@ -26,6 +32,8 @@ import Peer from './entities/Peer';
 import Long = require('long');
 import FullUser from './entities/FullUser';
 import UserOutPeer from './entities/UserOutPeer';
+import { ListMode } from './entities/ListMode';
+import { GroupTypeEnum } from './entities/GroupType';
 
 const pkg = require('../package.json');
 
@@ -263,11 +271,11 @@ class Rpc extends Services {
     );
   }
 
-  async messageRead(peer: OutPeer, date?: Long) {
+  async readMessages(peer: OutPeer, date?: Long) {
     if (!date) {
       date = Long.fromValue(0);
     }
-    await this.messaging.messageRead(
+    await this.messaging.readMessages(
       dialog.RequestMessageRead.create({
         peer: peer.toApi(),
         date: date,
@@ -360,32 +368,19 @@ class Rpc extends Services {
 
   async loadHistory(
     peer: OutPeer,
-    date?: Long,
-    direction?: dialog.ListLoadMode,
-    limit?: number,
+    date = Long.fromValue(0),
+    direction = ListMode.FORWARD,
+    limit = 2,
   ): Promise<Array<HistoryMessage>> {
-    if (!date) {
-      date = Long.fromValue(0);
-    }
-    if (!direction) {
-      direction = dialog.ListLoadMode.LISTLOADMODE_FORWARD;
-    }
-    if (!limit) {
-      limit = 2;
-    }
     const history = await this.messaging.loadHistory(
       dialog.RequestLoadHistory.create({
         peer: peer.toApi(),
         date: date,
-        loadMode: direction,
+        loadMode: direction.valueOf(),
         limit: limit,
       }),
     );
-    const len = history.history.length;
-    const result: Array<HistoryMessage> = new Array(len);
-    for (let i = 0; len > i; i++) {
-      result[i] = HistoryMessage.from(history.history[i]);
-    }
+    const result = history.history.map(HistoryMessage.from);
 
     return result;
   }
@@ -439,13 +434,20 @@ class Rpc extends Services {
     );
   }
 
-  async createGroup(title: string, username: string): Promise<void> {
-    await this.groups.createGroup(
+  async createGroup(
+    type = GroupTypeEnum.UNKNOWN,
+    title: string,
+  ): Promise<Group | null> {
+    const response = await this.groups.createGroup(
       dialog.RequestCreateGroup.create({
         title: title,
-        username: google.protobuf.StringValue.create({ value: username }),
+        groupType: type.valueOf(),
       }),
     );
+    if (response.group !== null && response.group !== undefined) {
+      return Group.from(response.group);
+    }
+    return null;
   }
 
   async findGroupsByShortname(query: string): Promise<Array<Peer>> {

@@ -31,6 +31,8 @@ import normalizeArray from './utils/normalizeArray';
 import DeletedContent from './entities/messaging/content/DeletedContent';
 import { SSLConfig } from './utils/createCredentials';
 import FullUser from './entities/FullUser';
+import { ListMode } from './entities/ListMode';
+import { GroupTypeEnum } from './entities/GroupType';
 
 type Config = {
   token: Token;
@@ -38,13 +40,6 @@ type Config = {
   ssl?: SSLConfig;
   loggerOptions?: LoggerOptions;
 };
-
-export enum ListMode {
-  UNKNOWN = dialog.ListLoadMode.LISTLOADMODE_UNKNOWN,
-  FORWARD = dialog.ListLoadMode.LISTLOADMODE_FORWARD,
-  BACKWARD = dialog.ListLoadMode.LISTLOADMODE_BACKWARD,
-  BOTH = dialog.ListLoadMode.LISTLOADMODE_BOTH,
-}
 
 class Bot {
   private readonly rpc: Rpc;
@@ -139,7 +134,6 @@ class Bot {
     return state.self;
   }
 
-  // search by already seen
   /**
    * Returns user by id, if bot already seen this user before.
    */
@@ -156,7 +150,6 @@ class Bot {
     return state.groups.get(gid) || null;
   }
 
-  // subscribe to events
   /**
    * Subscribes to messages stream.
    */
@@ -218,10 +211,10 @@ class Bot {
     return this.rpc.editMessage(mid, content);
   }
 
-  public async messageRead(peer: Peer, date?: Long): Promise<void> {
+  public async readMessages(peer: Peer, date?: Long): Promise<void> {
     const state = await this.ready;
     const outPeer = state.createOutPeer(peer);
-    return this.rpc.messageRead(outPeer, date);
+    return this.rpc.readMessages(outPeer, date);
   }
 
   /**
@@ -282,7 +275,6 @@ class Bot {
     return this.rpc.sendMessage(outPeer, content, attachment);
   }
 
-  // uploading
   /**
    * Retrieves file url by location.
    */
@@ -290,7 +282,6 @@ class Bot {
     return this.rpc.fetchFileUrl(fileLocation);
   }
 
-  // history
   /**
    * Retrieves messages by message ids.
    */
@@ -308,15 +299,14 @@ class Bot {
   public async loadHistory(
     peer: Peer,
     date?: Long,
-    direction?: dialog.ListLoadMode,
+    direction?: ListMode,
     limit?: number,
-  ): Promise<Array<HistoryMessage> | null> {
+  ): Promise<Array<HistoryMessage>> {
     const state = await this.ready;
-    const outPeer = await state.createOutPeer(peer);
-    return await this.rpc.loadHistory(outPeer, date, direction, limit);
+    const outPeer = state.createOutPeer(peer);
+    return this.rpc.loadHistory(outPeer, date, direction, limit);
   }
 
-  // search
   /**
    * Finds user by nick.
    */
@@ -338,7 +328,6 @@ class Bot {
     return null;
   }
 
-  // parameters
   public async getParameter(key: string): Promise<string | null> {
     const state = await this.ready;
 
@@ -353,18 +342,31 @@ class Bot {
     state.parameters.set(key, value);
   }
 
-  // groups
-  public async createGroup(title: string, username: string): Promise<void> {
-    await this.rpc.createGroup(title, username);
+  public async createGroup(
+    type: GroupTypeEnum,
+    title: string,
+  ): Promise<Group | null> {
+    return this.rpc.createGroup(type, title);
   }
 
-  public async findGroupsByShortname(
-    query: string,
-  ): Promise<Array<Peer> | null> {
-    return (await this.rpc.findGroupsByShortname(query)) || null;
+  public async findGroupByShortname(query: string): Promise<Group | null> {
+    const state = await this.ready;
+    const groups = await this.rpc.findGroupsByShortname(query);
+    const lowerShortname = query.toLowerCase();
+    for (let group of groups) {
+      const currentGroup = state.groups.get(group.id);
+      if (
+        currentGroup &&
+        currentGroup.data &&
+        currentGroup.data.shortname &&
+        lowerShortname === currentGroup.data.shortname.toLowerCase()
+      ) {
+        return currentGroup;
+      }
+    }
+    return null;
   }
 
-  // users
   public async userFullProfile(peer: Peer): Promise<FullUser | null> {
     const state = await this.ready;
     const outPeer = state.createOutPeer(peer);

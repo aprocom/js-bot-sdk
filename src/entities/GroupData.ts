@@ -18,6 +18,7 @@ class GroupData {
   public readonly avatar: null | Avatar;
   public readonly createdAt: Date;
   public readonly about?: null | string;
+  public readonly shortname?: null | string;
 
   public static from(api: dialog.GroupData) {
     return new GroupData(api);
@@ -32,6 +33,7 @@ class GroupData {
     this.avatar = api.avatar ? new Avatar(api.avatar) : null;
     this.createdAt = dateFromTimestamp(api.createdAt);
     this.about = getOpt(api.about, null);
+    this.shortname = getOpt(api.shortname, null);
   }
 }
 

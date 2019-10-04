@@ -66,7 +66,7 @@ class Messaging extends Service<any> {
     );
   }
 
-  messageRead(
+  readMessages(
     request: dialog.RequestMessageRead,
     metadata?: Metadata,
   ): Promise<void> {

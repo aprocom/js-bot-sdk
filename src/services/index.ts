@@ -15,6 +15,9 @@ import Search from './Search';
 import Users from './Users';
 
 class Services {
+  public readonly users: Users;
+  public readonly groups: Groups;
+  public readonly search: Search;
   public readonly contacts: Contacts;
   public readonly messaging: Messaging;
   public readonly parameters: Parameters;
@@ -22,11 +25,11 @@ class Services {
   public readonly mediaAndFiles: MediaAndFiles;
   public readonly authentication: Authentication;
   public readonly sequenceAndUpdates: SequenceAndUpdates;
-  public readonly groups: Groups;
-  public readonly search: Search;
-  public readonly users: Users;
 
   constructor(config: Config) {
+    this.users = new Users(config);
+    this.groups = new Groups(config);
+    this.search = new Search(config);
     this.contacts = new Contacts(config);
     this.messaging = new Messaging(config);
     this.parameters = new Parameters(config);
@@ -34,12 +37,12 @@ class Services {
     this.mediaAndFiles = new MediaAndFiles(config);
     this.authentication = new Authentication(config);
     this.sequenceAndUpdates = new SequenceAndUpdates(config);
-    this.groups = new Groups(config);
-    this.search = new Search(config);
-    this.users = new Users(config);
   }
 
   public close() {
+    this.users.close();
+    this.groups.close();
+    this.search.close();
     this.contacts.close();
     this.messaging.close();
     this.parameters.close();
@@ -47,9 +50,6 @@ class Services {
     this.mediaAndFiles.close();
     this.authentication.close();
     this.sequenceAndUpdates.close();
-    this.groups.close();
-    this.search.close();
-    this.users.close();
   }
 }
 
