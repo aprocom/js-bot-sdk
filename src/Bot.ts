@@ -21,7 +21,6 @@ import {
   TextContent,
   DocumentContent,
   MessageAttachment,
-  OutPeer,
 } from './entities';
 import State from './State';
 import { ResponseEntities } from './internal/types';
@@ -31,8 +30,15 @@ import normalizeArray from './utils/normalizeArray';
 import DeletedContent from './entities/messaging/content/DeletedContent';
 import { SSLConfig } from './utils/createCredentials';
 import FullUser from './entities/FullUser';
-import { ListMode } from './entities/ListMode';
-import { GroupTypeEnum } from './entities/GroupType';
+import HistoryListMode from './entities/HistoryListMode';
+import Long = require('long');
+import {
+  PrivateChannelType,
+  PrivateGroupType,
+  PublicChannelType,
+  PublicGroupType,
+  UnknownGroupType,
+} from './entities/GroupType';
 
 type Config = {
   token: Token;
@@ -183,8 +189,6 @@ class Bot {
   /**
    * Sends text message.
    */
-
-  //messaging
   public async sendText(
     peer: Peer,
     text: string,
@@ -211,10 +215,10 @@ class Bot {
     return this.rpc.editMessage(mid, content);
   }
 
-  public async readMessages(peer: Peer, date?: Long): Promise<void> {
+  public async readMessages(peer: Peer, since?: Long): Promise<void> {
     const state = await this.ready;
     const outPeer = state.createOutPeer(peer);
-    return this.rpc.readMessages(outPeer, date);
+    return this.rpc.readMessages(outPeer, since);
   }
 
   /**
@@ -298,9 +302,9 @@ class Bot {
 
   public async loadHistory(
     peer: Peer,
-    date?: Long,
-    direction?: ListMode,
-    limit?: number,
+    date = Long.fromValue(0),
+    direction = HistoryListMode.FORWARD,
+    limit = 2,
   ): Promise<Array<HistoryMessage>> {
     const state = await this.ready;
     const outPeer = state.createOutPeer(peer);
@@ -343,25 +347,36 @@ class Bot {
   }
 
   public async createGroup(
-    type: GroupTypeEnum,
     title: string,
+    type:
+      | PublicGroupType
+      | PrivateGroupType
+      | PublicChannelType
+      | PrivateChannelType
+      | UnknownGroupType,
   ): Promise<Group | null> {
-    return this.rpc.createGroup(type, title);
+    return this.rpc.createGroup(title, type);
   }
 
   public async findGroupByShortname(query: string): Promise<Group | null> {
     const state = await this.ready;
-    const groups = await this.rpc.findGroupsByShortname(query);
-    const lowerShortname = query.toLowerCase();
-    for (let group of groups) {
-      const currentGroup = state.groups.get(group.id);
+    const uids = await this.applyEntities(
+      state,
+      await this.rpc.searchContacts(query),
+    );
+
+    const lowerNick = query.toLowerCase();
+    for (let id of uids) {
+      const group = state.groups.get(id);
       if (
-        currentGroup &&
-        currentGroup.data &&
-        currentGroup.data.shortname &&
-        lowerShortname === currentGroup.data.shortname.toLowerCase()
+        group &&
+        group.data &&
+        group.data.type &&
+        (group.data.type instanceof PublicGroupType ||
+          group.data.type instanceof PublicChannelType) &&
+        lowerNick === group.data.type.shortname
       ) {
-        return currentGroup;
+        return group;
       }
     }
     return null;

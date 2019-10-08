@@ -11,7 +11,7 @@ class Search extends Service<any> {
     super(dialog.Search, config);
   }
 
-  findGroupByShortname(
+  peerSearch(
     request: dialog.RequestPeerSearch,
     metadata?: Metadata,
   ): Promise<dialog.ResponsePeerSearch> {

@@ -14,7 +14,7 @@ import mapNotNull from './utils/mapNotNull';
 import reduce from './utils/reduce';
 import { Entities, PeerEntities, ResponseEntities } from './internal/types';
 import { Observable, from } from 'rxjs';
-import { flatMap, last, map } from 'rxjs/operators';
+import { flatMap, last, map, windowCount } from 'rxjs/operators';
 import {
   Content,
   OutPeer,
@@ -28,12 +28,18 @@ import { FileInfo } from './utils/getFileInfo';
 import randomLong from './utils/randomLong';
 import fromReadStream from './utils/fromReadStream';
 import UUID from './entities/UUID';
-import Peer from './entities/Peer';
 import Long = require('long');
 import FullUser from './entities/FullUser';
-import UserOutPeer from './entities/UserOutPeer';
-import { ListMode } from './entities/ListMode';
-import { GroupTypeEnum } from './entities/GroupType';
+import HistoryListMode, {
+  historyListModeToApi,
+} from './entities/HistoryListMode';
+import {
+  PrivateChannelType,
+  PrivateGroupType,
+  PublicChannelType,
+  PublicGroupType,
+  UnknownGroupType,
+} from './entities/GroupType';
 
 const pkg = require('../package.json');
 
@@ -271,11 +277,8 @@ class Rpc extends Services {
     );
   }
 
-  async readMessages(peer: OutPeer, date?: Long) {
-    if (!date) {
-      date = Long.fromValue(0);
-    }
-    await this.messaging.readMessages(
+  async readMessages(peer: OutPeer, date = Long.fromValue(0)) {
+    await this.messaging.readMessage(
       dialog.RequestMessageRead.create({
         peer: peer.toApi(),
         date: date,
@@ -368,15 +371,15 @@ class Rpc extends Services {
 
   async loadHistory(
     peer: OutPeer,
-    date = Long.fromValue(0),
-    direction = ListMode.FORWARD,
-    limit = 2,
+    date: Long,
+    direction: HistoryListMode,
+    limit: number,
   ): Promise<Array<HistoryMessage>> {
     const history = await this.messaging.loadHistory(
       dialog.RequestLoadHistory.create({
         peer: peer.toApi(),
         date: date,
-        loadMode: direction.valueOf(),
+        loadMode: historyListModeToApi(direction),
         limit: limit,
       }),
     );
@@ -398,7 +401,10 @@ class Rpc extends Services {
   }
 
   async userFullProfile(peer: OutPeer): Promise<FullUser | null> {
-    const userOutPeer = UserOutPeer.create(peer.peer, peer.accessHash).toApi();
+    const userOutPeer = dialog.UserOutPeer.create({
+      uid: peer.peer.id,
+      accessHash: peer.accessHash,
+    });
     const fullUsersApi = await this.users.loadFullUsers(
       dialog.RequestLoadFullUsers.create({
         userPeers: Array(userOutPeer),
@@ -435,13 +441,33 @@ class Rpc extends Services {
   }
 
   async createGroup(
-    type = GroupTypeEnum.UNKNOWN,
     title: string,
+    type:
+      | PublicGroupType
+      | PrivateGroupType
+      | PublicChannelType
+      | PrivateChannelType
+      | UnknownGroupType,
   ): Promise<Group | null> {
+    let shortname = null;
+    if (type instanceof PublicGroupType || type instanceof PublicChannelType) {
+      shortname = type.shortname;
+    }
+
+    let groupType = null;
+    if (type instanceof PrivateGroupType || type instanceof PublicGroupType) {
+      groupType = dialog.GroupType.GROUPTYPE_GROUP;
+    } else if (type instanceof UnknownGroupType) {
+      groupType = dialog.GroupType.GROUPTYPE_UNKNOWN;
+    } else {
+      groupType = dialog.GroupType.GROUPTYPE_CHANNEL;
+    }
+
     const response = await this.groups.createGroup(
       dialog.RequestCreateGroup.create({
         title: title,
-        groupType: type.valueOf(),
+        username: google.protobuf.StringValue.create({ value: shortname }),
+        groupType: groupType,
       }),
     );
     if (response.group !== null && response.group !== undefined) {
@@ -450,8 +476,10 @@ class Rpc extends Services {
     return null;
   }
 
-  async findGroupsByShortname(query: string): Promise<Array<Peer>> {
-    const find = await this.search.findGroupByShortname(
+  async findGroupPeerByShortname(
+    query: string,
+  ): Promise<dialog.Peer | null | undefined> {
+    const find = await this.search.peerSearch(
       dialog.RequestPeerSearch.create({
         query: [
           dialog.SearchCondition.create({
@@ -467,13 +495,18 @@ class Rpc extends Services {
         ],
       }),
     );
-    const groups = find.groupPeers;
-    const len = groups.length;
-    const groupsPeers: Array<Peer> = new Array(len);
-    for (let i = 0; len > i; i++) {
-      groupsPeers[i] = Peer.group(groups[i].groupId);
+    const lowerShortname = query.toLocaleLowerCase();
+    const result = find.searchResults;
+    for (let group of result) {
+      if (
+        group &&
+        group.shortname &&
+        group.shortname.value.toLocaleLowerCase() === lowerShortname
+      ) {
+        return group.peer;
+      }
     }
-    return groupsPeers;
+    return null;
   }
 }
 

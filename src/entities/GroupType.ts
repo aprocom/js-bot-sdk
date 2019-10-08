@@ -53,10 +53,3 @@ export class PublicChannelType extends GroupType {
 export class PrivateChannelType extends GroupType {}
 
 export class UnknownGroupType extends GroupType {}
-
-export enum GroupTypeEnum {
-  UNKNOWN = dialog.GroupType.GROUPTYPE_UNKNOWN,
-  GROUP = dialog.GroupType.GROUPTYPE_GROUP,
-  CHANNEL = dialog.GroupType.GROUPTYPE_CHANNEL,
-  THREAD = dialog.GroupType.GROUPTYPE_THREAD,
-}
