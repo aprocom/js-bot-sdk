@@ -475,39 +475,6 @@ class Rpc extends Services {
     }
     return null;
   }
-
-  async findGroupPeerByShortname(
-    query: string,
-  ): Promise<dialog.Peer | null | undefined> {
-    const find = await this.search.peerSearch(
-      dialog.RequestPeerSearch.create({
-        query: [
-          dialog.SearchCondition.create({
-            searchPeerTypeCondition: dialog.SearchPeerTypeCondition.create({
-              peerType: dialog.SearchPeerType.SEARCHPEERTYPE_GROUPS,
-            }),
-          }),
-          dialog.SearchCondition.create({
-            searchPieceText: dialog.SearchPieceText.create({
-              query: query,
-            }),
-          }),
-        ],
-      }),
-    );
-    const lowerShortname = query.toLocaleLowerCase();
-    const result = find.searchResults;
-    for (let group of result) {
-      if (
-        group &&
-        group.shortname &&
-        group.shortname.value.toLocaleLowerCase() === lowerShortname
-      ) {
-        return group.peer;
-      }
-    }
-    return null;
-  }
 }
 
 export default Rpc;
